@@ -11,6 +11,6 @@ public enum Prioridade
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum Status 
 { 
-    Aberta = 1,
-    Concluida = 2
+    Aberta,
+    Concluida
 }
