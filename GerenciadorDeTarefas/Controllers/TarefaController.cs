@@ -226,8 +226,6 @@ namespace GerenciadorDeTarefas.Controllers
             if (!Enum.TryParse<Prioridade>(dto.PrioridadeTarefa.ToString(), true, out var prioridade))
                 return BadRequest("PrioridadeTarefa inválida.");
 
-            if (!Enum.TryParse<Status>(dto.StatusTarefa.ToString(), true, out var status))
-                return BadRequest("StatusTarefa inválida.");
 
 
             
@@ -235,7 +233,7 @@ namespace GerenciadorDeTarefas.Controllers
             tarefaExistente.ProjetoId = projeto.Id;
             tarefaExistente.UsuarioId = loggedInUserId; 
             tarefaExistente.PrioridadeTarefa = prioridade;
-            tarefaExistente.StatusTarefa = status;
+            tarefaExistente.StatusTarefa = dto.StatusTarefa;
 
             
             if (dto.Tags != null && dto.Tags.Any())
