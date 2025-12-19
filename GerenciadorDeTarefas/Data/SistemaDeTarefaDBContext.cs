@@ -16,11 +16,21 @@ namespace GerenciadorDeTarefas.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.HasPostgresEnum("status_enum", "Aberta", "Concluida");
-            modelBuilder.HasPostgresEnum("prioridade_enum", "Todas", "Alta", "Media", "Baixa");
+            modelBuilder.HasPostgresEnum(
+                schema: null,
+                name: "status_enum",
+                labels: new[] { "Aberta", "Concluida" }
+            );
+
+            modelBuilder.HasPostgresEnum(
+                schema: null,
+                name: "prioridade_enum",
+                labels: new[] { "Todas", "Alta", "Media", "Baixa" }
+            );
 
             base.OnModelCreating(modelBuilder);
         }
+
 
     }
 }
