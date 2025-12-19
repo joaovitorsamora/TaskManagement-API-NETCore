@@ -1,4 +1,5 @@
 using GerenciadorDeTarefas.Data;
+using GerenciadorDeTarefas.Models;
 using GerenciadorDeTarefas.Repository;
 using GerenciadorDeTarefas.Repository.Interface;
 using GerenciadorDeTarefas.Service;
