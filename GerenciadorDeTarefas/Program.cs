@@ -11,6 +11,13 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var reload = builder.Environment.IsDevelopment();
+
+builder.Configuration
+       .AddJsonFile("appsettings.json", optional: false, reloadOnChange: reload)
+       .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: reload)
+       .AddEnvironmentVariables();
+
 var jwtSecretKey = builder.Configuration["Jwt:Key"];
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
