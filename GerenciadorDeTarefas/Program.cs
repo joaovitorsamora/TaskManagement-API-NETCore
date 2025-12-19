@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,23 +45,27 @@ var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    connectionString = databaseUrl
-        .Replace("postgres://", "Host=")
-        .Replace("postgresql://", "Host=")
-        .Replace("tcp://", "Host=")
-        .Replace(":", ";Port=")
-        .Replace("@", ";Username=")
-        .Replace("/", ";Database=")
-        + ";SSL Mode=Require;Trust Server Certificate=true";
+    // Limpeza da string de conexão para evitar erros de caractere inválido no final (index 0)
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':');
+
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
 }
 else
 {
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
+// CONFIGURAÇÃO DO NPGSQL DATA SOURCE
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+
+// 1. Permite ler enums mesmo que não estejam perfeitamente mapeados (Resolve o erro InvalidCastException)
+dataSourceBuilder.EnableUnmappedTypes();
+
+// 2. Mapeamento explícito dos seus Enums
 dataSourceBuilder.MapEnum<Status>("status_enum");
 dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
+
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
@@ -70,7 +75,8 @@ builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
 
-    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    // Ignora o aviso de mudanças pendentes que estava travando o deploy
+    options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 });
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
@@ -105,7 +111,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
-app.UseHttpsRedirection();
+// Remova ou comente o HttpsRedirection se o Render estiver tendo problemas com portas HTTPS internas
+// app.UseHttpsRedirection(); 
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
@@ -119,6 +127,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
+        // Log do erro, mas permite que o app suba
         Console.WriteLine($"Nota: Falha ao aplicar migrações automáticas: {ex.Message}");
     }
 }
