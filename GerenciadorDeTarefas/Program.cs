@@ -1,4 +1,3 @@
-using GerenciadorDeTarefas.Controllers;
 using GerenciadorDeTarefas.Data;
 using GerenciadorDeTarefas.Repository;
 using GerenciadorDeTarefas.Repository.Interface;
@@ -11,7 +10,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
-
 
 var jwtSecretKey = builder.Configuration["Jwt:Key"];
 var issuer = builder.Configuration["Jwt:Issuer"];
@@ -32,13 +30,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-
 string connectionString;
 
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    
     connectionString = databaseUrl
         .Replace("postgres://", "Host=")
         .Replace("postgresql://", "Host=")
@@ -58,10 +54,8 @@ builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-    })
-    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    });
 });
-
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
@@ -69,28 +63,22 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITarefaRepository, TarefaRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-builder.Services
-    .AddControllers()
+builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(
-            new JsonStringEnumConverter()
-        );
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials()
-    );
+              .AllowAnyMethod());
 });
-
 
 var app = builder.Build();
 
@@ -101,13 +89,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
-
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 
 using (var scope = app.Services.CreateScope())
 {

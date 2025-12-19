@@ -78,64 +78,79 @@ namespace GerenciadorDeTarefas.Controllers
         [Authorize]
         [HttpPost]
         public async Task<ActionResult<TarefaDTO>> PostAsync(
-            [FromBody] TarefaDTO dto,
-            [FromServices] IProjetoRepository projetoRepository,
-            [FromServices] ITagRepository tagRepository,
-            [FromServices] IUsuarioRepository usuarioRepository)
+    [FromBody] TarefaDTO dto,
+    [FromServices] IProjetoRepository projetoRepository,
+    [FromServices] ITagRepository tagRepository,
+    [FromServices] IUsuarioRepository usuarioRepository)
         {
+            
             if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var loggedInUserId))
                 return Unauthorized("Usuário não autenticado ou token inválido.");
 
-            int usuarioId = loggedInUserId;
+            
+            var usuario = await usuarioRepository.GetByIdAsync(loggedInUserId);
+            if (usuario == null)
+                return NotFound("Usuário logado não encontrado.");
+
+            if (string.IsNullOrWhiteSpace(dto.Titulo))
+                return BadRequest("Título é obrigatório.");
+
+            if (!dto.StatusTarefa.HasValue)
+                return BadRequest("StatusTarefa é obrigatório.");
+
+            if (!dto.PrioridadeTarefa.HasValue)
+                return BadRequest("PrioridadeTarefa é obrigatória.");
 
           
-            if (!Enum.TryParse<Status>(dto.StatusTarefa.ToString(), true, out var status))
-                return BadRequest("StatusTarefa inválido.");
-
-            if (!Enum.TryParse<Prioridade>(dto.PrioridadeTarefa.ToString(), true, out var prioridade))
-                return BadRequest("PrioridadeTarefa inválida.");
-
-            
             ProjetoModel projeto = null;
-            if (!string.IsNullOrWhiteSpace(dto.ProjetoNome))
+
+            if (dto.ProjetoId.HasValue)
+            {
+                projeto = await projetoRepository.GetByIdAsync(dto.ProjetoId.Value);
+                if (projeto == null)
+                    return BadRequest("ProjetoId inválido.");
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.ProjetoNome))
             {
                 projeto = (await projetoRepository.GetAllAsync())
-                    .FirstOrDefault(p => p.UsuarioId == usuarioId &&
-                                            p.Nome.Trim().Equals(dto.ProjetoNome.Trim(), StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(p =>
+                        p.UsuarioId == loggedInUserId &&
+                        p.Nome.Trim().Equals(dto.ProjetoNome.Trim(), StringComparison.OrdinalIgnoreCase));
 
                 if (projeto == null)
                 {
-                    var usuario = await usuarioRepository.GetByIdAsync(usuarioId);
-                    if (usuario == null) return NotFound("Usuário logado não encontrado.");
-
                     projeto = new ProjetoModel
                     {
                         Nome = dto.ProjetoNome.Trim(),
-                        UsuarioId = usuarioId,
+                        UsuarioId = loggedInUserId,
                         UsuarioNome = usuario.Nome
                     };
 
                     await projetoRepository.PostAsync(projeto);
-                    await projetoRepository.SaveChangesAsync(); 
+                    await projetoRepository.SaveChangesAsync();
                 }
             }
 
-
+          
             var tags = new List<TagModel>();
+
             if (dto.Tags != null && dto.Tags.Any())
             {
                 var todasTags = await tagRepository.GetAllAsync();
+
                 foreach (var tagNome in dto.Tags)
                 {
+                    if (string.IsNullOrWhiteSpace(tagNome)) continue;
+
                     var tag = todasTags.FirstOrDefault(t =>
-                        string.Equals(t.Nome.Trim(), tagNome.Trim(), StringComparison.OrdinalIgnoreCase));
+                        t.Nome.Trim().Equals(tagNome.Trim(), StringComparison.OrdinalIgnoreCase));
 
                     if (tag == null)
                     {
-                        
                         tag = new TagModel { Nome = tagNome.Trim() };
                         await tagRepository.PostAsync(tag);
-                        }
+                        await tagRepository.SaveChangesAsync();
+                    }
 
                     tags.Add(tag);
                 }
@@ -144,18 +159,19 @@ namespace GerenciadorDeTarefas.Controllers
             var tarefa = new TarefaModel
             {
                 Titulo = dto.Titulo.Trim(),
-                DataCriacao = dto.DataCriacao,
-                StatusTarefa = status,
-                PrioridadeTarefa = prioridade,
-                ProjetoId = projeto.Id,
-                UsuarioId = usuarioId,
+                DataCriacao = dto.DataCriacao == default ? DateTime.UtcNow : dto.DataCriacao,
+                StatusTarefa = dto.StatusTarefa.Value,
+                PrioridadeTarefa = dto.PrioridadeTarefa.Value,
+                ProjetoId = projeto?.Id,
+                UsuarioId = loggedInUserId,
                 Tags = tags
             };
 
-            await _repository.PostAsync(tarefa);
-            await _repository.SaveChangesAsync(); 
-
            
+            await _repository.PostAsync(tarefa);
+            await _repository.SaveChangesAsync();
+
+          
             var dtoResult = new TarefaDTO
             {
                 Id = tarefa.Id,
@@ -164,86 +180,94 @@ namespace GerenciadorDeTarefas.Controllers
                 ProjetoId = tarefa.ProjetoId,
                 UsuarioId = tarefa.UsuarioId,
                 ProjetoNome = projeto?.Nome,
-                StatusTarefa = status,
-                PrioridadeTarefa = prioridade,
+                StatusTarefa = tarefa.StatusTarefa,
+                PrioridadeTarefa = tarefa.PrioridadeTarefa,
                 Tags = tarefa.Tags.Select(t => t.Nome).ToList()
             };
 
-            return CreatedAtRoute("GetTarefa", new { id = tarefa.Id, usuarioId }, dtoResult);
+            return CreatedAtRoute("GetTarefa", new { id = tarefa.Id }, dtoResult);
         }
 
 
-      
+
         [Authorize]
         [HttpPut("{id}")]
-        public async Task<ActionResult> PutAsync(
-            int id,
-            [FromBody] TarefaDTO dto,
-            [FromServices] ITagRepository tagRepository,
-            [FromServices] IProjetoRepository projetoRepository,
-            [FromServices] IUsuarioRepository usuarioRepository)
+        public async Task<IActionResult> PutAsync(
+    int id,
+    [FromBody] TarefaDTO dto,
+    [FromServices] ITagRepository tagRepository,
+    [FromServices] IProjetoRepository projetoRepository,
+    [FromServices] IUsuarioRepository usuarioRepository)
         {
-      
+           
             if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var loggedInUserId))
                 return Unauthorized("Usuário não autenticado ou token inválido.");
 
+           
             var tarefaExistente = await _repository.GetByIdAsync(id);
             if (tarefaExistente == null)
                 return NotFound("Tarefa não encontrada.");
 
-          
+            
             if (tarefaExistente.UsuarioId != loggedInUserId)
                 return Forbid("Você só pode editar suas próprias tarefas.");
 
-           
+            
             var usuario = await usuarioRepository.GetByIdAsync(loggedInUserId);
             if (usuario == null)
-                return NotFound("Usuário logado não encontrado na base de dados.");
+                return NotFound("Usuário logado não encontrado.");
 
-           
-            ProjetoModel projeto = null;
-            if (!string.IsNullOrWhiteSpace(dto.ProjetoNome))
+            if (!string.IsNullOrWhiteSpace(dto.Titulo))
+                tarefaExistente.Titulo = dto.Titulo.Trim();
+
+            if (dto.StatusTarefa.HasValue)
+                tarefaExistente.StatusTarefa = dto.StatusTarefa.Value;
+
+            if (dto.PrioridadeTarefa.HasValue)
+                tarefaExistente.PrioridadeTarefa = dto.PrioridadeTarefa.Value;
+
+            tarefaExistente.UsuarioId = loggedInUserId;
+
+          
+            if (dto.ProjetoId.HasValue)
             {
-                projeto = (await projetoRepository.GetAllAsync())
-                    .FirstOrDefault(p => p.Nome.Trim().Equals(dto.ProjetoNome.Trim(), StringComparison.OrdinalIgnoreCase)
-                                         && p.UsuarioId == loggedInUserId);
+                tarefaExistente.ProjetoId = dto.ProjetoId.Value;
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.ProjetoNome))
+            {
+                var projeto = (await projetoRepository.GetAllAsync())
+                    .FirstOrDefault(p =>
+                        p.Nome.Trim().Equals(dto.ProjetoNome.Trim(), StringComparison.OrdinalIgnoreCase)
+                        && p.UsuarioId == loggedInUserId);
 
                 if (projeto == null)
                 {
                     projeto = new ProjetoModel
                     {
                         Nome = dto.ProjetoNome.Trim(),
-                        UsuarioId = loggedInUserId, 
+                        UsuarioId = loggedInUserId,
                         UsuarioNome = usuario.Nome
                     };
+
                     await projetoRepository.PostAsync(projeto);
                     await projetoRepository.SaveChangesAsync();
                 }
+
+                tarefaExistente.ProjetoId = projeto.Id;
             }
 
-
           
-            if (!Enum.TryParse<Prioridade>(dto.PrioridadeTarefa.ToString(), true, out var prioridade))
-                return BadRequest("PrioridadeTarefa inválida.");
-
-
-
-            
-            tarefaExistente.Titulo = dto.Titulo.Trim();
-            tarefaExistente.ProjetoId = projeto.Id;
-            tarefaExistente.UsuarioId = loggedInUserId; 
-            tarefaExistente.PrioridadeTarefa = prioridade;
-            tarefaExistente.StatusTarefa = dto.StatusTarefa;
-
-            
-            if (dto.Tags != null && dto.Tags.Any())
+            if (dto.Tags != null)
             {
                 var todasTags = await tagRepository.GetAllAsync();
                 var tags = new List<TagModel>();
+
                 foreach (var tagNome in dto.Tags)
                 {
+                    if (string.IsNullOrWhiteSpace(tagNome)) continue;
+
                     var tag = todasTags.FirstOrDefault(t =>
-                        string.Equals(t.Nome.Trim(), tagNome.Trim(), StringComparison.OrdinalIgnoreCase));
+                        t.Nome.Trim().Equals(tagNome.Trim(), StringComparison.OrdinalIgnoreCase));
 
                     if (tag == null)
                     {
@@ -257,19 +281,14 @@ namespace GerenciadorDeTarefas.Controllers
 
                 tarefaExistente.Tags = tags;
             }
-            else
-            {
-                if (tarefaExistente.Tags != null)
-                {
-                    tarefaExistente.Tags.Clear();
-                }
-            }
 
+          
             await _repository.UpdateAsync(tarefaExistente);
-            await _repository.SaveChangesAsync(); 
+            await _repository.SaveChangesAsync();
 
             return NoContent();
         }
+
 
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteAsync(int id)
