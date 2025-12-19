@@ -69,6 +69,8 @@ builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
     {
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
+
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
