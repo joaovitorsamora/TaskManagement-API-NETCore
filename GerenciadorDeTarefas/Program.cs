@@ -9,16 +9,22 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 
-var builder = WebApplication.CreateBuilder(args);
+Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
+
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ReloadConfigOnChange = false
+});
 
 var reload = builder.Environment.IsDevelopment();
 
 builder.Configuration
-       .AddJsonFile("appsettings.json", optional: false, reloadOnChange: reload)
-       .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: reload)
-       .AddEnvironmentVariables();
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: reload)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: reload)
+    .AddEnvironmentVariables();
 
-var jwtSecretKey = builder.Configuration["Jwt:Key"];
+var jwtSecretKey = builder.Configuration["Jwt:Key"]!;
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
 
@@ -40,6 +46,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 string connectionString;
 
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+
 if (!string.IsNullOrEmpty(databaseUrl))
 {
     connectionString = databaseUrl
@@ -53,7 +60,7 @@ if (!string.IsNullOrEmpty(databaseUrl))
 }
 else
 {
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 }
 
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
@@ -82,9 +89,11 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+    );
 });
 
 var app = builder.Build();
@@ -100,11 +109,5 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
-    db.Database.Migrate();
-}
 
 app.Run();
