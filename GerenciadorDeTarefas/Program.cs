@@ -112,8 +112,15 @@ app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
-    db.Database.Migrate();
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
+        db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Nota: Falha ao aplicar migrações automáticas: {ex.Message}");
+    }
 }
 
 app.Run();
