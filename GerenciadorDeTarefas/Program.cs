@@ -9,13 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
 
-Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
-
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-{
-    Args = args,
-    ReloadConfigOnChange = false
-});
+var builder = WebApplication.CreateBuilder(args);
 
 var reload = builder.Environment.IsDevelopment();
 
@@ -24,7 +18,7 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: reload)
     .AddEnvironmentVariables();
 
-var jwtSecretKey = builder.Configuration["Jwt:Key"]!;
+var jwtSecretKey = builder.Configuration["Jwt:Key"];
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
 
@@ -60,7 +54,7 @@ if (!string.IsNullOrEmpty(databaseUrl))
 }
 else
 {
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
@@ -89,11 +83,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy
-            .AllowAnyOrigin()
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-    );
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod());
 });
 
 var app = builder.Build();
@@ -109,5 +101,11 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
+    db.Database.Migrate();
+}
 
 app.Run();
