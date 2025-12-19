@@ -3,9 +3,11 @@ using GerenciadorDeTarefas.Repository;
 using GerenciadorDeTarefas.Repository.Interface;
 using GerenciadorDeTarefas.Service;
 using GerenciadorDeTarefas.Service.Interface;
+using GerenciadorDeTarefas.Enum;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using System.Text;
 using System.Text.Json.Serialization;
 
@@ -38,7 +40,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 string connectionString;
-
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(databaseUrl))
@@ -57,15 +58,18 @@ else
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.MapEnum<StatusTarefa>("status_enum");
+dataSourceBuilder.MapEnum<PrioridadeTarefa>("prioridade_enum");
+var dataSource = dataSourceBuilder.Build();
+
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
 {
-    options.UseNpgsql(connectionString, npgsqlOptions =>
+    options.UseNpgsql(dataSource, npgsqlOptions =>
     {
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-        npgsqlOptions.EnableUnmappedTypes();
     });
 });
-
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
