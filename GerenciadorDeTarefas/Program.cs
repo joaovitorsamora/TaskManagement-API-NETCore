@@ -3,7 +3,6 @@ using GerenciadorDeTarefas.Repository;
 using GerenciadorDeTarefas.Repository.Interface;
 using GerenciadorDeTarefas.Service;
 using GerenciadorDeTarefas.Service.Interface;
-using GerenciadorDeTarefas.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -59,8 +58,8 @@ else
 }
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-dataSourceBuilder.MapEnum<GerenciadorDeTarefas.Models.StatusTarefa>("status_enum");
-dataSourceBuilder.MapEnum<GerenciadorDeTarefas.Models.PrioridadeTarefa>("prioridade_enum");
+dataSourceBuilder.MapEnum<Status>("status_enum");
+dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>

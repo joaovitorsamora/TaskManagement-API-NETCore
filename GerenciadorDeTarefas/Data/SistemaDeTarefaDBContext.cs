@@ -1,6 +1,5 @@
 ﻿using GerenciadorDeTarefas.Models;
 using Microsoft.EntityFrameworkCore;
-using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace GerenciadorDeTarefas.Data
 {
@@ -16,13 +15,10 @@ namespace GerenciadorDeTarefas.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            
-            modelBuilder.HasPostgresEnum("status_enum");
-            modelBuilder.HasPostgresEnum("prioridade_enum");
+            modelBuilder.HasPostgresEnum<Status>("status_enum");
+            modelBuilder.HasPostgresEnum<Prioridade>("prioridade_enum");
 
             base.OnModelCreating(modelBuilder);
         }
-
-
     }
 }
