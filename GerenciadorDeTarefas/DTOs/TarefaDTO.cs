@@ -15,8 +15,8 @@ namespace GerenciadorDeTarefas.DTOs
         public string? ProjetoNome { get; set; }
 
         
-        public Status StatusTarefa { get; set; }
-        public Prioridade PrioridadeTarefa { get; set; }
+        public Status? StatusTarefa { get; set; }
+        public Prioridade? PrioridadeTarefa { get; set; }
         public List<string>? Tags { get; set; }
     }
 }
