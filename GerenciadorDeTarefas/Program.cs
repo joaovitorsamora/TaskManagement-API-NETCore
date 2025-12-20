@@ -11,16 +11,15 @@ using Npgsql;
 using System.Text;
 using System.Text.Json.Serialization;
 
-// 1️⃣ Criar builder primeiro
+
 var builder = WebApplication.CreateBuilder(args);
 
-// 2️⃣ Carrega .env apenas em desenvolvimento local
 if (builder.Environment.IsDevelopment())
 {
-    DotNetEnv.Env.Load(); // carrega .env da raiz
+    DotNetEnv.Env.Load(); 
 }
 
-// 3️⃣ JWT
+
 var jwtSecretKey = Environment.GetEnvironmentVariable("Jwt__Key")
                    ?? "chave_mestra_padrao_para_evitar_erros_de_nulo_123";
 var issuer = Environment.GetEnvironmentVariable("Jwt__Issuer") ?? "default_issuer";
@@ -41,30 +40,29 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// 4️⃣ Connection string PostgreSQL
+
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                       ?? throw new Exception("Variável de ambiente ConnectionStrings__DefaultConnection não encontrada!");
 
-// 5️⃣ Npgsql + enums
+
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.MapEnum<Status>("status_enum");
 dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
 var dataSource = dataSourceBuilder.Build();
 
-// 6️⃣ DbContext
-builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
-{
-    options.UseNpgsql(dataSource);
-});
 
-// 7️⃣ Injeção de dependências
+builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DataBase"),
+        o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+
+
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITarefaRepository, TarefaRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// 8️⃣ Controllers
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -72,11 +70,10 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-// 9️⃣ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 🔟 CORS seguro para frontend Vercel
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -87,7 +84,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 1️⃣1️⃣ Middleware
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -105,7 +102,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// 1️⃣2️⃣ Migração automática
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
