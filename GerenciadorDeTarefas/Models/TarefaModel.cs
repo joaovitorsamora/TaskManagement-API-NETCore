@@ -14,8 +14,8 @@ namespace GerenciadorDeTarefas.Models
         [Column(TypeName = "prioridade_enum")]
         public Prioridade PrioridadeTarefa { get; set; }
 
-        public int? ProjetoId { get; set; }
-        public ProjetoModel Projeto { get; set; } = null!;
+        public int? ProjetoId { get; set; } 
+        public virtual ProjetoModel? Projeto { get; set; }
 
         public int UsuarioId { get; set; }
         public UsuarioModel Usuario { get; set; } = null!;

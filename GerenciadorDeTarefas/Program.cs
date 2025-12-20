@@ -53,7 +53,7 @@ var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DataBase"),
-        o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+    npgsqlOptions => npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
 
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
