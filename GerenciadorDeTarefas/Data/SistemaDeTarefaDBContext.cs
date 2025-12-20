@@ -15,11 +15,11 @@ namespace GerenciadorDeTarefas.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Registra os Enums do Postgres
+            
             modelBuilder.HasPostgresEnum<Status>("status_enum");
             modelBuilder.HasPostgresEnum<Prioridade>("prioridade_enum");
 
-            // CONFIGURAÇÃO MANUAL DAS COLUNAS DA TABELA TAREFAS
+            
             modelBuilder.Entity<TarefaModel>(entity =>
             {
                 entity.Property(e => e.StatusTarefa)
