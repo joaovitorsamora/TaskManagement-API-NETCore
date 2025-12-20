@@ -11,19 +11,20 @@ using Npgsql;
 using System.Text;
 using System.Text.Json.Serialization;
 
-// 1️⃣ Carrega o .env só em desenvolvimento local
-if (builder.Environment.IsDevelopment())
-{
-    DotNetEnv.Env.Load(); // carrega .env da raiz automaticamente
-}
-
+// 1️⃣ Criar builder primeiro
 var builder = WebApplication.CreateBuilder(args);
 
-// 2️⃣ JWT
+// 2️⃣ Carrega .env apenas em desenvolvimento local
+if (builder.Environment.IsDevelopment())
+{
+    DotNetEnv.Env.Load(); // carrega .env da raiz
+}
+
+// 3️⃣ JWT
 var jwtSecretKey = Environment.GetEnvironmentVariable("Jwt__Key")
                    ?? "chave_mestra_padrao_para_evitar_erros_de_nulo_123";
-var issuer = Environment.GetEnvironmentVariable("Jwt__Issuer");
-var audience = Environment.GetEnvironmentVariable("Jwt__Audience");
+var issuer = Environment.GetEnvironmentVariable("Jwt__Issuer") ?? "default_issuer";
+var audience = Environment.GetEnvironmentVariable("Jwt__Audience") ?? "default_audience";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -40,30 +41,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// 3️⃣ Connection string PostgreSQL
+// 4️⃣ Connection string PostgreSQL
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                       ?? throw new Exception("Variável de ambiente ConnectionStrings__DefaultConnection não encontrada!");
 
-// 4️⃣ Npgsql + enums
+// 5️⃣ Npgsql + enums
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.MapEnum<Status>("status_enum");
 dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
 var dataSource = dataSourceBuilder.Build();
 
-// 5️⃣ DbContext
+// 6️⃣ DbContext
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
 {
     options.UseNpgsql(dataSource);
 });
 
-// 6️⃣ Injeção de dependências
+// 7️⃣ Injeção de dependências
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITarefaRepository, TarefaRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// 7️⃣ Controllers
+// 8️⃣ Controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -71,11 +72,11 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
-// 8️⃣ Swagger
+// 9️⃣ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 9️⃣ CORS seguro
+// 🔟 CORS seguro para frontend Vercel
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -86,14 +87,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 10️⃣ Middleware
+// 1️⃣1️⃣ Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "GerenciadorDeTarefas API V1");
-        c.RoutePrefix = string.Empty; // Swagger abre na raiz
+        c.RoutePrefix = string.Empty;
     });
 }
 
@@ -104,7 +105,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// 11️⃣ Migração automática (cuidado em múltiplas instâncias)
+// 1️⃣2️⃣ Migração automática
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
