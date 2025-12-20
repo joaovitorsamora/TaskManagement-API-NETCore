@@ -14,14 +14,13 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configurações de Configuração e Ambiente
+// 1. Configurações
 var reload = builder.Environment.IsDevelopment();
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: reload)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: reload)
     .AddEnvironmentVariables();
 
-// 2. JWT - Autenticação
+// 2. JWT
 var jwtSecretKey = builder.Configuration["Jwt:Key"] ?? "chave_mestra_padrao_para_evitar_erros_de_nulo_123";
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
@@ -41,7 +40,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// 3. String de Conexão com Parser para o Render
+// 3. String de Conexão Render
 string connectionString;
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 
@@ -56,44 +55,40 @@ else
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
-// 4. CONFIGURAÇÃO CRÍTICA PARA OS SEUS ENUMS MANUAIS
+// 4. DATA SOURCE BUILDER (Resolução do erro de Cast)
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 
-// ESSA LINHA É OBRIGATÓRIA porque você mudou de INTEGER para ENUM no banco
+// Opt-in necessário para Enums manuais no Postgres
 dataSourceBuilder.EnableUnmappedTypes();
 
-// Mapeia as classes C# para os nomes exatos dos tipos criados no seu banco (status_enum e prioridade_enum)
+// Mapeamento Global dos Enums
 dataSourceBuilder.MapEnum<Status>("status_enum");
 dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
 
 var dataSource = dataSourceBuilder.Build();
 
-// 5. Configuração do DbContext
+// 5. DbContext
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
 {
     options.UseNpgsql(dataSource, npgsqlOptions =>
     {
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
-
-    // Ignora o aviso de migrações pendentes para não travar o deploy no Render
     options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 });
 
-// 6. Injeção de Dependências
+// 6. Dependências
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITarefaRepository, TarefaRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// 7. Configuração de Controllers e JSON
+// 7. JSON Options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Converte o Enum para String no JSON (ex: exibe "Aberta" em vez de 0)
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        // Evita erros de referência circular entre Tarefa e Usuario
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
@@ -104,26 +99,17 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("http://localhost:5173", "https://seu-frontend.onrender.com")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
 var app = builder.Build();
-
-// 9. Middleware Pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
 
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// 10. Tenta aplicar migrações (Opcional, mas útil)
+// 9. Auto-Migration
 using (var scope = app.Services.CreateScope())
 {
     try
@@ -133,7 +119,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Nota: Ignorando erro de migração manual: {ex.Message}");
+        Console.WriteLine($"Erro de migração: {ex.Message}");
     }
 }
 
