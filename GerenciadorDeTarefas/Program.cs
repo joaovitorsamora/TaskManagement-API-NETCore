@@ -76,10 +76,14 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("https://task-management-client-react.vercel.app")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+    options.AddPolicy("AllowVercel",
+        policy =>
+        {
+            policy.WithOrigins("https://task-management-client-react.vercel.app") // Sua URL da Vercel
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
 });
 
 var app = builder.Build();
@@ -95,7 +99,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseCors("AllowFrontend");
+app.UseCors("AllowVercel");
 
 app.UseAuthentication();
 app.UseAuthorization();
