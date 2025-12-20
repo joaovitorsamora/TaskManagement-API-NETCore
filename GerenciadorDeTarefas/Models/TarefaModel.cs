@@ -1,17 +1,21 @@
-﻿namespace GerenciadorDeTarefas.Models
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace GerenciadorDeTarefas.Models
 {
     public class TarefaModel
     {
         public int Id { get; set; }
         public string? Titulo { get; set; }
         public DateTime DataCriacao { get; set; }
-        public Status? StatusTarefa { get; set; }
-        public Prioridade? PrioridadeTarefa { get; set; }
 
+        [Column(TypeName = "status_enum")]
+        public Status StatusTarefa { get; set; }
+
+        [Column(TypeName = "prioridade_enum")]
+        public Prioridade PrioridadeTarefa { get; set; }
 
         public int? ProjetoId { get; set; }
         public ProjetoModel Projeto { get; set; } = null!;
-
 
         public int UsuarioId { get; set; }
         public UsuarioModel Usuario { get; set; } = null!;

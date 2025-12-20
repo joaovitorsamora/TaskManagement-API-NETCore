@@ -55,27 +55,21 @@ else
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 }
 
-// 4. DATA SOURCE BUILDER (Resolução do erro de Cast)
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 
-// Opt-in necessário para Enums manuais no Postgres
-dataSourceBuilder.EnableUnmappedTypes();
-
-// Mapeamento Global dos Enums
 dataSourceBuilder.MapEnum<Status>("status_enum");
 dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
 
 var dataSource = dataSourceBuilder.Build();
 
-// 5. DbContext
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
 {
     options.UseNpgsql(dataSource, npgsqlOptions =>
     {
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
-    options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 });
+
 
 // 6. Dependências
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
