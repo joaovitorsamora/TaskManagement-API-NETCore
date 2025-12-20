@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GerenciadorDeTarefas.Migrations
 {
     [DbContext(typeof(SistemaDeTarefaDBContext))]
-    [Migration("20251009185623_InitialCreate")]
+    [Migration("20251220143713_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -23,6 +23,8 @@ namespace GerenciadorDeTarefas.Migrations
                 .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "prioridade_enum", "prioridade", new[] { "todas", "alta", "media", "baixa" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "status_enum", "status", new[] { "aberta", "concluida" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("GerenciadorDeTarefas.Models.ProjetoModel", b =>
@@ -87,14 +89,14 @@ namespace GerenciadorDeTarefas.Migrations
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int?>("PrioridadeTarefa")
+                    b.Property<int>("PrioridadeTarefa")
+                        .HasColumnType("prioridade_enum");
+
+                    b.Property<int?>("ProjetoId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("ProjetoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("StatusTarefa")
-                        .HasColumnType("integer");
+                    b.Property<int>("StatusTarefa")
+                        .HasColumnType("status_enum");
 
                     b.Property<string>("Titulo")
                         .HasColumnType("text");
@@ -123,6 +125,10 @@ namespace GerenciadorDeTarefas.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Nome")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SenhaHash")
+                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -163,9 +169,7 @@ namespace GerenciadorDeTarefas.Migrations
                 {
                     b.HasOne("GerenciadorDeTarefas.Models.ProjetoModel", "Projeto")
                         .WithMany("Tarefas")
-                        .HasForeignKey("ProjetoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ProjetoId");
 
                     b.HasOne("GerenciadorDeTarefas.Models.UsuarioModel", "Usuario")
                         .WithMany("Tarefas")

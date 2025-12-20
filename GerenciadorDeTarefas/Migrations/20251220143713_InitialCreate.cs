@@ -12,6 +12,10 @@ namespace GerenciadorDeTarefas.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterDatabase()
+                .Annotation("Npgsql:Enum:prioridade_enum.prioridade", "todas,alta,media,baixa")
+                .Annotation("Npgsql:Enum:status_enum.status", "aberta,concluida");
+
             migrationBuilder.CreateTable(
                 name: "Usuarios",
                 columns: table => new
@@ -19,7 +23,8 @@ namespace GerenciadorDeTarefas.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Nome = table.Column<string>(type: "text", nullable: true),
-                    Email = table.Column<string>(type: "text", nullable: true)
+                    Email = table.Column<string>(type: "text", nullable: true),
+                    SenhaHash = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -75,9 +80,9 @@ namespace GerenciadorDeTarefas.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Titulo = table.Column<string>(type: "text", nullable: true),
                     DataCriacao = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    StatusTarefa = table.Column<int>(type: "integer", nullable: true),
-                    PrioridadeTarefa = table.Column<int>(type: "integer", nullable: true),
-                    ProjetoId = table.Column<int>(type: "integer", nullable: false),
+                    StatusTarefa = table.Column<int>(type: "status_enum", nullable: false),
+                    PrioridadeTarefa = table.Column<int>(type: "prioridade_enum", nullable: false),
+                    ProjetoId = table.Column<int>(type: "integer", nullable: true),
                     UsuarioId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
@@ -87,8 +92,7 @@ namespace GerenciadorDeTarefas.Migrations
                         name: "FK_Tarefas_Projetos_ProjetoId",
                         column: x => x.ProjetoId,
                         principalTable: "Projetos",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Tarefas_Usuarios_UsuarioId",
                         column: x => x.UsuarioId,

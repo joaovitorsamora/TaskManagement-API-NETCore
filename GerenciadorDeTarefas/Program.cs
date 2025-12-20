@@ -1,4 +1,4 @@
-using GerenciadorDeTarefas.Data;
+﻿using GerenciadorDeTarefas.Data;
 using GerenciadorDeTarefas.Models;
 using GerenciadorDeTarefas.Repository;
 using GerenciadorDeTarefas.Repository.Interface;
@@ -11,16 +11,19 @@ using Npgsql;
 using System.Text;
 using System.Text.Json.Serialization;
 
+// 1️⃣ Carrega o .env só em desenvolvimento local
+if (builder.Environment.IsDevelopment())
+{
+    DotNetEnv.Env.Load(); // carrega .env da raiz automaticamente
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
-var reload = builder.Environment.IsDevelopment();
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: reload)
-    .AddEnvironmentVariables();
-
-var jwtSecretKey = builder.Configuration["Jwt:Key"] ?? "chave_mestra_padrao_para_evitar_erros_de_nulo_123";
-var issuer = builder.Configuration["Jwt:Issuer"];
-var audience = builder.Configuration["Jwt:Audience"];
+// 2️⃣ JWT
+var jwtSecretKey = Environment.GetEnvironmentVariable("Jwt__Key")
+                   ?? "chave_mestra_padrao_para_evitar_erros_de_nulo_123";
+var issuer = Environment.GetEnvironmentVariable("Jwt__Issuer");
+var audience = Environment.GetEnvironmentVariable("Jwt__Audience");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -37,39 +40,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-string connectionString;
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+// 3️⃣ Connection string PostgreSQL
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                      ?? throw new Exception("Variável de ambiente ConnectionStrings__DefaultConnection não encontrada!");
 
-if (!string.IsNullOrEmpty(databaseUrl))
-{
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-}
-else
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-}
-
+// 4️⃣ Npgsql + enums
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.MapEnum<Status>("status_enum");
 dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
 var dataSource = dataSourceBuilder.Build();
 
+// 5️⃣ DbContext
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
 {
-    options.UseNpgsql(dataSource, npgsqlOptions =>
-    {
-        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-    });
+    options.UseNpgsql(dataSource);
 });
 
+// 6️⃣ Injeção de dependências
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITarefaRepository, TarefaRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+// 7️⃣ Controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -77,22 +71,40 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
+// 8️⃣ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 9️⃣ CORS seguro
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+        policy.WithOrigins("https://task-management-client-react.vercel.app")
+              .AllowAnyHeader()
+              .AllowAnyMethod());
 });
 
 var app = builder.Build();
 
+// 10️⃣ Middleware
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "GerenciadorDeTarefas API V1");
+        c.RoutePrefix = string.Empty; // Swagger abre na raiz
+    });
+}
+
 app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
+// 11️⃣ Migração automática (cuidado em múltiplas instâncias)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
