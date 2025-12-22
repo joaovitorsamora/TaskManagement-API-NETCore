@@ -13,15 +13,20 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Carrega o .env apenas em desenvolvimento local
+// =====================
+// ENV (.env apenas local)
+// =====================
 if (builder.Environment.IsDevelopment())
 {
     DotNetEnv.Env.Load();
 }
 
-// Configurações de JWT
+// =====================
+// JWT
+// =====================
 var jwtSecretKey = Environment.GetEnvironmentVariable("Jwt__Key")
-                    ?? "chave_mestra_padrao_para_evitar_erros_de_nulo_123";
+    ?? throw new Exception("Jwt__Key não configurado");
+
 var issuer = Environment.GetEnvironmentVariable("Jwt__Issuer") ?? "default_issuer";
 var audience = Environment.GetEnvironmentVariable("Jwt__Audience") ?? "default_audience";
 
@@ -36,90 +41,121 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = issuer,
             ValidAudience = audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSecretKey))
         };
     });
 
-// 1. EXTRAÇÃO E VALIDAÇÃO DA CONNECTION STRING
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-                      ?? builder.Configuration.GetConnectionString("DefaultConnection")
-                      ?? throw new Exception("String de conexão 'DefaultConnection' não encontrada!");
+// =====================
+// CONNECTION STRING
+// =====================
+var connectionString =
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new Exception("Connection string DefaultConnection não encontrada");
 
-// 2. MAPEAMENTO DE ENUMS PARA O POSTGRESQL (Npgsql)
+// =====================
+// NPGSQL + ENUMS (FORMA CORRETA)
+// =====================
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+
 dataSourceBuilder.MapEnum<Status>("status_enum");
 dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
+
 var dataSource = dataSourceBuilder.Build();
 
-// 3. CONFIGURAÇÃO DO DBCONTEXT USANDO O DATASOURCE MAPEADO
-builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
-    options.UseNpgsql(dataSource,
-    npgsqlOptions => npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
-// Injeção de Dependência
+// =====================
+// DB CONTEXT
+// =====================
+builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
+{
+    options.UseNpgsql(
+        dataSource,
+        npgsql => npgsql.UseQuerySplittingBehavior(
+            QuerySplittingBehavior.SplitQuery));
+});
+
+// =====================
+// DEPENDENCY INJECTION
+// =====================
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITarefaRepository, TarefaRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+// =====================
+// CONTROLLERS + JSON
+// =====================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
+        options.JsonSerializerOptions.ReferenceHandler =
+            ReferenceHandler.IgnoreCycles;
     });
 
+// =====================
+// SWAGGER
+// =====================
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CONFIGURAÇÃO DE CORS
+// =====================
+// CORS
+// =====================
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowVercel",
-        policy =>
-        {
-            policy.WithOrigins("https://task-management-client-react.vercel.app")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
+    options.AddPolicy("AllowVercel", policy =>
+    {
+        policy.WithOrigins("https://task-management-client-react.vercel.app")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 
 var app = builder.Build();
 
-// --- ALTERAÇÃO AQUI: SWAGGER ESCONDIDO EM PRODUÇÃO ---
+// =====================
+// SWAGGER (DEV ONLY)
+// =====================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "GerenciadorDeTarefas API V1");
-        c.RoutePrefix = string.Empty; // No local, abre direto no Swagger
+        c.RoutePrefix = string.Empty;
     });
 }
 
-// ORDEM DOS MIDDLEWARES
+// =====================
+// PIPELINE
+// =====================
 app.UseRouting();
-
 app.UseCors("AllowVercel");
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
-// APLICAÇÃO DE MIGRATIONS AUTOMÁTICAS
+// =====================
+// AUTO MIGRATIONS
+// =====================
 using (var scope = app.Services.CreateScope())
 {
     try
     {
-        var db = scope.ServiceProvider.GetRequiredService<SistemaDeTarefaDBContext>();
+        var db = scope.ServiceProvider
+            .GetRequiredService<SistemaDeTarefaDBContext>();
+
         db.Database.Migrate();
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Erro ao aplicar migrations: {ex.Message}");
+        Console.WriteLine($"Erro ao aplicar migrations: {ex}");
     }
 }
 

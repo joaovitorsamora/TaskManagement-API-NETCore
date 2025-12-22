@@ -7,14 +7,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GerenciadorDeTarefas.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialSchemaWithEnums : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
-                .Annotation("Npgsql:Enum:prioridade_enum.prioridade", "todas,alta,media,baixa")
-                .Annotation("Npgsql:Enum:status_enum.status", "aberta,concluida");
+                .Annotation("Npgsql:Enum:prioridade_enum", "Todas,Alta,Media,Baixa")
+                .Annotation("Npgsql:Enum:status_enum", "Aberta,Concluida");
+
 
             migrationBuilder.CreateTable(
                 name: "Usuarios",

@@ -20,6 +20,8 @@ namespace GerenciadorDeTarefas.Migrations
                 .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "prioridade_enum", "prioridade", new[] { "todas", "alta", "media", "baixa" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "status_enum", "status", new[] { "aberta", "concluida" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("GerenciadorDeTarefas.Models.ProjetoModel", b =>
