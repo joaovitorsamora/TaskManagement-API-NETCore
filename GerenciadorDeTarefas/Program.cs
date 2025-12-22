@@ -59,8 +59,8 @@ var connectionString =
 // =====================
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 
-dataSourceBuilder.MapEnum<Status>();
-dataSourceBuilder.MapEnum<Prioridade>();
+dataSourceBuilder.MapEnum<Status>("status_enum");
+dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
 
 var dataSource = dataSourceBuilder.Build();
 
