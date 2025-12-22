@@ -13,9 +13,8 @@ namespace GerenciadorDeTarefas.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
-                .Annotation("Npgsql:Enum:prioridade_enum", "Todas,Alta,Media,Baixa")
-                .Annotation("Npgsql:Enum:status_enum", "Aberta,Concluida");
-
+                .Annotation("Npgsql:Enum:prioridade_enum.prioridade", "todas,alta,media,baixa")
+                .Annotation("Npgsql:Enum:status_enum.status", "aberta,concluida");
 
             migrationBuilder.CreateTable(
                 name: "Usuarios",

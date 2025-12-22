@@ -15,20 +15,21 @@ namespace GerenciadorDeTarefas.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.HasPostgresEnum<Status>("status_enum");
             modelBuilder.HasPostgresEnum<Prioridade>("prioridade_enum");
+            modelBuilder.HasPostgresEnum<Status>("status_enum");
 
-            modelBuilder.Entity<TarefaModel>(entity =>
-            {
-                entity.Property(e => e.StatusTarefa)
-                      .HasColumnType("status_enum");
+            // Adicione estas linhas para forçar as colunas a usarem o tipo enum
+            modelBuilder.Entity<TarefaModel>()
+                .Property(t => t.StatusTarefa)
+                .HasColumnType("status_enum");
 
-                entity.Property(e => e.PrioridadeTarefa)
-                      .HasColumnType("prioridade_enum");
-            });
+            modelBuilder.Entity<TarefaModel>()
+                .Property(t => t.PrioridadeTarefa)
+                .HasColumnType("prioridade_enum");
 
             base.OnModelCreating(modelBuilder);
         }
+
 
 
 

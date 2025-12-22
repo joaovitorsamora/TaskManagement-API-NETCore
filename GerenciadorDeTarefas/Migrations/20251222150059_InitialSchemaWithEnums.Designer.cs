@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GerenciadorDeTarefas.Migrations
 {
     [DbContext(typeof(SistemaDeTarefaDBContext))]
-    [Migration("20251222134425_InitialSchemaWithEnums")]
+    [Migration("20251222150059_InitialSchemaWithEnums")]
     partial class InitialSchemaWithEnums
     {
         /// <inheritdoc />

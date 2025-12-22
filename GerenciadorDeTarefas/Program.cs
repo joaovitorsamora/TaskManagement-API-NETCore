@@ -59,8 +59,8 @@ var connectionString =
 // =====================
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 
-dataSourceBuilder.MapEnum<Status>("status_enum");
-dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
+dataSourceBuilder.MapEnum<Status>();
+dataSourceBuilder.MapEnum<Prioridade>();
 
 var dataSource = dataSourceBuilder.Build();
 
@@ -69,12 +69,12 @@ var dataSource = dataSourceBuilder.Build();
 // DB CONTEXT
 // =====================
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
-{
-    options.UseNpgsql(
-        dataSource,
-        npgsql => npgsql.UseQuerySplittingBehavior(
-            QuerySplittingBehavior.SplitQuery));
-});
+    options.UseNpgsql(dataSource,
+        o => o.MapEnum<Prioridade>("prioridade_enum")
+              .MapEnum<Status>("status_enum")
+    )
+);
+
 
 // =====================
 // DEPENDENCY INJECTION

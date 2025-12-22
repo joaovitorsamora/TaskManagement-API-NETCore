@@ -2,19 +2,19 @@
 
 namespace GerenciadorDeTarefas.Models
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    
     public enum Prioridade
     {
-        Todas,
-        Alta,
-        Media,
-        Baixa
+        todas,
+        alta,
+        media,
+        baixa
     }
 
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum Status
     {
-        Aberta,
-        Concluida
+        aberta,
+        concluida
     }
+
 }
