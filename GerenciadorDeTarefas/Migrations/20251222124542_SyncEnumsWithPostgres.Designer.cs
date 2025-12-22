@@ -3,6 +3,7 @@ using System;
 using GerenciadorDeTarefas.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GerenciadorDeTarefas.Migrations
 {
     [DbContext(typeof(SistemaDeTarefaDBContext))]
-    partial class SistemaDeTarefaDBContextModelSnapshot : ModelSnapshot
+    [Migration("20251222124542_SyncEnumsWithPostgres")]
+    partial class SyncEnumsWithPostgres
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
