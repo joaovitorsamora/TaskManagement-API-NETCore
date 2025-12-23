@@ -15,17 +15,17 @@ namespace GerenciadorDeTarefas.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.HasPostgresEnum<Prioridade>("prioridade_enum");
-            modelBuilder.HasPostgresEnum<Status>("status_enum");
+            // Configura a Tarefa para salvar enums como strings no banco
+            modelBuilder.Entity<TarefaModel>(entity =>
+            {
+                entity.Property(t => t.StatusTarefa)
+                    .HasConversion<string>() // Converte Enum <-> String automaticamente
+                    .HasMaxLength(20);      // Opcional: define tamanho no banco
 
-            // Adicione estas linhas para forçar as colunas a usarem o tipo enum
-            modelBuilder.Entity<TarefaModel>()
-                .Property(t => t.StatusTarefa)
-                .HasColumnType("status_enum");
-
-            modelBuilder.Entity<TarefaModel>()
-                .Property(t => t.PrioridadeTarefa)
-                .HasColumnType("prioridade_enum");
+                entity.Property(t => t.PrioridadeTarefa)
+                    .HasConversion<string>()
+                    .HasMaxLength(20);
+            });
 
             base.OnModelCreating(modelBuilder);
         }

@@ -49,31 +49,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // =====================
 // CONNECTION STRING
 // =====================
-var connectionString =
-    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new Exception("Connection string DefaultConnection não encontrada");
+// Pode simplificar a conexão novamente
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// =====================
-// NPGSQL + ENUMS (FORMA CORRETA)
-// =====================
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-
-dataSourceBuilder.MapEnum<Status>("status_enum");
-dataSourceBuilder.MapEnum<Prioridade>("prioridade_enum");
-
-var dataSource = dataSourceBuilder.Build();
-
-
-// =====================
-// DB CONTEXT
-// =====================
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
-    options.UseNpgsql(dataSource,
-        o => o.MapEnum<Prioridade>("prioridade_enum")
-              .MapEnum<Status>("status_enum")
-    )
-);
+    options.UseNpgsql(connectionString));
 
 
 // =====================

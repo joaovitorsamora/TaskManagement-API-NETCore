@@ -20,8 +20,6 @@ namespace GerenciadorDeTarefas.Migrations
                 .HasAnnotation("ProductVersion", "9.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "prioridade_enum", "prioridade", new[] { "todas", "alta", "media", "baixa" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "status_enum", "status", new[] { "aberta", "concluida" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("GerenciadorDeTarefas.Models.ProjetoModel", b =>
@@ -86,14 +84,18 @@ namespace GerenciadorDeTarefas.Migrations
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("PrioridadeTarefa")
-                        .HasColumnType("prioridade_enum");
+                    b.Property<string>("PrioridadeTarefa")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<int?>("ProjetoId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("StatusTarefa")
-                        .HasColumnType("status_enum");
+                    b.Property<string>("StatusTarefa")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Titulo")
                         .HasColumnType("text");
