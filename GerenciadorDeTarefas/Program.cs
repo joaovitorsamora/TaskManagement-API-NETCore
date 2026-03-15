@@ -90,7 +90,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVercel", policy =>
     {
-        policy.WithOrigins("https://task-management-client-react.vercel.app", "http://localhost:5173/")
+        policy.WithOrigins("https://task-management-client-react.vercel.app", "http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
