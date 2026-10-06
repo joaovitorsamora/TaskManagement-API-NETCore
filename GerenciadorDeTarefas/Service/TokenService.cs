@@ -18,7 +18,6 @@ namespace GerenciadorDeTarefas.Service
 
         public string GenerateToken(UsuarioModel user)
         {
-            // Pega as chaves da configuração. Use os valores padrão se a chave não for encontrada (segurança)
             var jwtSecretKey = _configuration["Jwt:Key"];
             var issuer = _configuration["Jwt:Issuer"];
             var audience = _configuration["Jwt:Audience"];
@@ -30,12 +29,11 @@ namespace GerenciadorDeTarefas.Service
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    // Adiciona claims essenciais
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                     new Claim(ClaimTypes.Name, user.Nome),
                     new Claim(ClaimTypes.Email, user.Email)
                 }),
-                Expires = DateTime.UtcNow.AddHours(2), // Define a expiração do token (Exemplo: 2 horas)
+                Expires = DateTime.UtcNow.AddHours(2), 
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
                 Issuer = issuer,
                 Audience = audience

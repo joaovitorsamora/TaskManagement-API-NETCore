@@ -13,17 +13,17 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =====================
-// ENV (.env apenas local)
-// =====================
-if (builder.Environment.IsDevelopment())
-{
-    DotNetEnv.Env.Load();
-}
 
-// =====================
-// JWT
-// =====================
+ if (!System.IO.File.Exists(".env"))
+    {
+        DotNetEnv.Env.Load("../.env");
+    }
+    else
+    {
+        DotNetEnv.Env.Load();
+    }
+
+
 var jwtSecretKey = Environment.GetEnvironmentVariable("Jwt__Key")
     ?? throw new Exception("Jwt__Key não configurado");
 
@@ -46,28 +46,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// =====================
-// CONNECTION STRING
-// =====================
-// Pode simplificar a conexão novamente
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new Exception("String de conexão 'DefaultConnection' não encontrada.");
 
 builder.Services.AddDbContext<SistemaDeTarefaDBContext>(options =>
     options.UseNpgsql(connectionString));
 
 
-// =====================
-// DEPENDENCY INJECTION
-// =====================
+
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IProjetoRepository, ProjetoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<ITarefaRepository, TarefaRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// =====================
-// CONTROLLERS + JSON
-// =====================
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -77,15 +72,42 @@ builder.Services.AddControllers()
             ReferenceHandler.IgnoreCycles;
     });
 
-// =====================
-// SWAGGER
-// =====================
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
-// =====================
-// CORS
-// =====================
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo 
+    { 
+        Title = "GerenciadorDeTarefas API", 
+        Version = "v1" 
+    });
+
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Insira o token JWT desta forma: Bearer seu_token_aqui"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVercel", policy =>
@@ -99,9 +121,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// =====================
-// SWAGGER (DEV ONLY)
-// =====================
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -112,18 +132,14 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// =====================
-// PIPELINE
-// =====================
+
 app.UseRouting();
 app.UseCors("AllowVercel");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// =====================
-// AUTO MIGRATIONS
-// =====================
+
 using (var scope = app.Services.CreateScope())
 {
     try
