@@ -3,12 +3,15 @@ using GerenciadorDeTarefas.Models;
 using GerenciadorDeTarefas.Repository.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Razor.TagHelpers;
+
 
 namespace GerenciadorDeTarefas.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TagController : ControllerBase
     {
         private readonly ITagRepository _repository;
@@ -23,7 +26,7 @@ namespace GerenciadorDeTarefas.Controllers
             var tags = await _repository.GetAllAsync();
             return Ok(tags);
         }
-
+       
         [HttpGet("{id}")]
         public async Task<ActionResult<TagModel>> GetByIdAsync(int id)
         {
@@ -31,7 +34,7 @@ namespace GerenciadorDeTarefas.Controllers
             if (tag == null) return NotFound();
             return Ok(tag);
         }
-
+       
         [HttpPost]
         public async Task<ActionResult> PostAsync([FromBody] TagDTO dto)
         {
@@ -50,7 +53,7 @@ namespace GerenciadorDeTarefas.Controllers
                 Nome = tag.Nome
             });
         }
-
+        
         [HttpGet("{tagId}/tarefas")]
 
         public async Task<ActionResult> GetAllTarefaAsync(int tagId)

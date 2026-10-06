@@ -4,6 +4,8 @@ using GerenciadorDeTarefas.Repository.Interface;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization; 
 using System.Security.Claims; 
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
 namespace GerenciadorDeTarefas.Controllers
 {
@@ -12,16 +14,22 @@ namespace GerenciadorDeTarefas.Controllers
     public class UsuarioController : ControllerBase
     {
         private readonly IUsuarioRepository _repository;
+        private readonly IWebHostEnvironment _env; 
 
-        public UsuarioController(IUsuarioRepository repository)
+        public UsuarioController(IUsuarioRepository repository, IWebHostEnvironment env)
         {
             _repository = repository;
+            _env = env;
         }
 
-        
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UsuarioResponseDTO>>> GetUsuario()
         {
+            if (!_env.IsDevelopment())
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "A listagem completa de usuários está disponível apenas em ambiente de desenvolvimento.");
+            }
+
             var usuarios = await _repository.GetAllAsync();
             var dtos = usuarios.Select(u => new UsuarioResponseDTO
             {
@@ -36,8 +44,8 @@ namespace GerenciadorDeTarefas.Controllers
         [HttpGet("me")]
         public async Task<ActionResult<UsuarioResponseDTO>> GetMe()
         {
-           
-            var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var loggedInUserId))
+                return Unauthorized("Usuário não autenticado.");
 
             var usuario = await _repository.GetByIdAsync(loggedInUserId);
             if (usuario == null) return NotFound();
@@ -52,76 +60,20 @@ namespace GerenciadorDeTarefas.Controllers
             return Ok(dto);
         }
 
-
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<ActionResult<UsuarioResponseDTO>> GetUsuarioById(int id)
         {
-            var usuario = await _repository.GetByIdAsync(id);
+            if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var loggedInUserId))
+                return Unauthorized();
 
-            if (usuario == null) return NotFound();
-
-            var dto = new UsuarioResponseDTO
-            {
-                Id = usuario.Id,
-                Nome = usuario.Nome,
-                Email = usuario.Email
-            };
-
-            return Ok(dto);
-        }
-
-
-        [Authorize] 
-        [HttpPut("{id}")]
-        public async Task<ActionResult> PutUsuario(int id, [FromBody] UsuarioRegisterDTO dto)
-        {
-           
-            var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-          
-            if (id != loggedInUserId)
-            {
-                return Forbid("Você só pode atualizar seu próprio perfil.");
-            }
-
-            var usuarioExistente = await _repository.GetByIdAsync(id);
-            if (usuarioExistente == null) return NotFound();
-
-            usuarioExistente.Nome = dto.Nome ?? usuarioExistente.Nome;
-            usuarioExistente.Email = dto.Email ?? usuarioExistente.Email;
-
-           
-            if (!string.IsNullOrWhiteSpace(dto.Senha))
-            {
-                usuarioExistente.SenhaHash = BCrypt.Net.BCrypt.HashPassword(dto.Senha);
-            }
-
-            await _repository.UpdateAsync(usuarioExistente);
-            await _repository.SaveChangesAsync();
-            return NoContent();
-        }
-
-        
-        [Authorize] 
-        [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteUsuario(int id)
-        {
-           
-            var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-          
-            if (id != loggedInUserId)
-            {
-                return Forbid("Você só pode excluir seu próprio perfil.");
-            }
+            if (id != loggedInUserId && !_env.IsDevelopment())
+                return StatusCode(StatusCodes.Status403Forbidden, "Você só pode ver os dados do seu próprio usuário.");
 
             var usuario = await _repository.GetByIdAsync(id);
-
             if (usuario == null) return NotFound();
 
-            await _repository.DeleteAsync(usuario);
-            await _repository.SaveChangesAsync();
-            return NoContent();
+            return Ok(new UsuarioResponseDTO { Id = usuario.Id, Nome = usuario.Nome, Email = usuario.Email });
         }
     }
 }
