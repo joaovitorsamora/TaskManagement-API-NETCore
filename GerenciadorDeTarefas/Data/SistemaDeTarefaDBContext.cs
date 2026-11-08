@@ -15,12 +15,11 @@ namespace GerenciadorDeTarefas.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configura a Tarefa para salvar enums como strings no banco
             modelBuilder.Entity<TarefaModel>(entity =>
             {
                 entity.Property(t => t.StatusTarefa)
-                    .HasConversion<string>() // Converte Enum <-> String automaticamente
-                    .HasMaxLength(20);      // Opcional: define tamanho no banco
+                    .HasConversion<string>() 
+                    .HasMaxLength(20); 
 
                 entity.Property(t => t.PrioridadeTarefa)
                     .HasConversion<string>()
@@ -29,10 +28,5 @@ namespace GerenciadorDeTarefas.Data
 
             base.OnModelCreating(modelBuilder);
         }
-
-
-
-
-
     }
 }

@@ -22,7 +22,6 @@ namespace GerenciadorDeTarefas.Controllers
             _repository = repository;
         }
 
-        // ========================= GET ALL =========================
         [Authorize]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TarefaDTO>>> GetAllAsync()
@@ -50,13 +49,21 @@ namespace GerenciadorDeTarefas.Controllers
             return Ok(result);
         }
 
-        // ========================= GET BY ID =========================
+        [Authorize]
         [HttpGet("{id}", Name = "GetTarefa")]
         public async Task<ActionResult<TarefaDTO>> GetByIdAsync(int id)
         {
+            
+            if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var loggedInUserId))
+                return Unauthorized("Usuário não autenticado ou token inválido.");
+
+            
             var tarefa = await _repository.GetByIdAsync(id);
             if (tarefa == null)
-                return NotFound();
+                return NotFound("Tarefa não encontrada.");
+            
+             if (tarefa.UsuarioId != loggedInUserId)
+                return StatusCode(StatusCodes.Status403Forbidden, "Você não tem permissão para visualizar esta tarefa.");
 
             return Ok(new TarefaDTO
             {
@@ -72,7 +79,6 @@ namespace GerenciadorDeTarefas.Controllers
             });
         }
 
-        // ========================= POST =========================
         [Authorize]
         [HttpPost]
         public async Task<ActionResult<TarefaDTO>> PostAsync(
@@ -94,7 +100,7 @@ namespace GerenciadorDeTarefas.Controllers
             if (usuario == null)
                 return NotFound("Usuário não encontrado.");
 
-            // ---------- Projeto ----------
+            
             ProjetoModel projeto = null;
 
             if (dto.ProjetoId.HasValue)
@@ -124,7 +130,7 @@ namespace GerenciadorDeTarefas.Controllers
                 }
             }
 
-            // ---------- Tags ----------
+            
             var tags = new List<TagModel>();
             if (dto.Tags?.Any() == true)
             {
@@ -146,11 +152,11 @@ namespace GerenciadorDeTarefas.Controllers
                 }
             }
 
-            // ---------- Tarefa ----------
+            
             var tarefa = new TarefaModel
             {
                 Titulo = dto.Titulo.Trim(),
-                DataCriacao = DateTime.UtcNow, // 🔥 FIX DEFINITIVO
+                DataCriacao = DateTime.UtcNow,
                 StatusTarefa = dto.StatusTarefa.Value,
                 PrioridadeTarefa = dto.PrioridadeTarefa.Value,
                 ProjetoId = projeto?.Id,
@@ -198,9 +204,7 @@ namespace GerenciadorDeTarefas.Controllers
             if (usuario == null)
                 return NotFound("Usuário logado não encontrado.");
 
-            // =========================
-            // CAMPOS SIMPLES
-            // =========================
+            
             if (!string.IsNullOrWhiteSpace(dto.Titulo))
                 tarefaExistente.Titulo = dto.Titulo.Trim();
 
@@ -210,12 +214,7 @@ namespace GerenciadorDeTarefas.Controllers
             if (dto.PrioridadeTarefa.HasValue)
                 tarefaExistente.PrioridadeTarefa = dto.PrioridadeTarefa.Value;
 
-            // ⚠️ NÃO ALTERAR DataCriacao
-            // tarefaExistente.DataCriacao permanece como está (UTC)
-
-            // =========================
-            // PROJETO
-            // =========================
+         
             if (dto.ProjetoId.HasValue)
             {
                 tarefaExistente.ProjetoId = dto.ProjetoId.Value;
@@ -243,9 +242,7 @@ namespace GerenciadorDeTarefas.Controllers
                 tarefaExistente.ProjetoId = projeto.Id;
             }
 
-            // =========================
-            // TAGS
-            // =========================
+            
             if (dto.Tags != null)
             {
                 var todasTags = await tagRepository.GetAllAsync();
@@ -277,18 +274,22 @@ namespace GerenciadorDeTarefas.Controllers
             return NoContent();
         }
 
-
-
-        // ========================= DELETE =========================
         [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAsync(int id)
         {
-            var tarefa = await _repository.GetByIdAsync(id);
-            if (tarefa == null)
-                return NotFound();
+            
+            if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var loggedInUserId))
+                return Unauthorized("Usuário não autenticado");
+            
+            var tarefaExistente = await _repository.GetByIdAsync(id);
+            if (tarefaExistente == null)
+                return NotFound("Tarefa não encontrada.");
 
-            await _repository.DeleteAsync(tarefa);
+            if (tarefaExistente.UsuarioId != loggedInUserId)
+                return StatusCode(StatusCodes.Status403Forbidden, "Você só pode deletar suas próprias tarefas.");
+
+            await _repository.DeleteAsync(tarefaExistente);
             await _repository.SaveChangesAsync();
 
             return NoContent();
